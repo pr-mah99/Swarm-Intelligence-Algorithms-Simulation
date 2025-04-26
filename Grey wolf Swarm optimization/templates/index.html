@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة خوارزمية تحسين سرب الذئاب الرمادية</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.0.0/d3.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+            gap: 15px;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        select {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .visualization-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+        }
+        .card {
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        }
+        #optimization-canvas {
+            width: 100%;
+            height: 400px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        #convergence-chart {
+            width: 100%;
+            height: 300px;
+        }
+        .wolf {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #95a5a6;
+            transform: translate(-50%, -50%);
+            transition: all 0.5s ease;
+        }
+        .alpha-wolf {
+            background-color: #e74c3c;
+            width: 14px;
+            height: 14px;
+        }
+        .beta-wolf {
+            background-color: #f39c12;
+            width: 12px;
+            height: 12px;
+        }
+        .delta-wolf {
+            background-color: #3498db;
+            width: 12px;
+            height: 12px;
+        }
+        .info-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
+        .info-item {
+            margin-bottom: 10px;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        .slider {
+            flex: 1;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .legend-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100px;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            border-left-color: #3498db;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .hidden {
+            display: none;
+        }
+        .steps-container {
+            margin-top: 30px;
+            text-align: right;
+        }
+        .step {
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>محاكاة خوارزمية تحسين سرب الذئاب الرمادية</h1>
+        
+        <div class="controls">
+            <select id="function-select">
+                <option value="sphere">دالة Sphere</option>
+                <option value="rastrigin">دالة Rastrigin</option>
+                <option value="himmelblau">دالة Himmelblau</option>
+            </select>
+            <button id="start-btn">بدء المحاكاة</button>
+            <button id="reset-btn">إعادة تعيين</button>
+        </div>
+        
+        <div class="visualization-container">
+            <div class="loading hidden" id="loading">
+                <div class="spinner"></div>
+                <p>جاري إجراء الحسابات...</p>
+            </div>
+            
+            <div class="row">
+                <div class="card">
+                    <h3>محاكاة حركة الذئاب</h3>
+                    <div id="optimization-canvas"></div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #e74c3c;"></div>
+                            <span>ألفا</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #f39c12;"></div>
+                            <span>بيتا</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #3498db;"></div>
+                            <span>دلتا</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background-color: #95a5a6;"></div>
+                            <span>أوميغا</span>
+                        </div>
+                    </div>
+                    <div class="slider-container">
+                        <span>تكرار:</span>
+                        <input type="range" min="0" max="0" value="0" class="slider" id="iteration-slider">
+                        <span id="iteration-value">0</span>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <h3>منحنى التقارب</h3>
+                    <canvas id="convergence-chart"></canvas>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h3>معلومات الأمثلية</h3>
+                <div class="info-item">
+                    <strong>أفضل قيمة:</strong> <span id="best-score">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>أفضل موقع:</strong> <span id="best-position">-</span>
+                </div>
+                <div class="info-item">
+                    <strong>عدد التكرارات:</strong> <span id="iterations">-</span>
+                </div>
+            </div>
+            
+            <div class="steps-container">
+                <h3>خطوات خوارزمية تحسين سرب الذئاب الرمادية</h3>
+                <div class="step">
+                    <strong>1. التهيئة:</strong> إنشاء مجموعة عشوائية من الذئاب (الحلول) وتحديد ألفا (أفضل حل)، بيتا (ثاني أفضل حل)، ودلتا (ثالث أفضل حل).
+                </div>
+                <div class="step">
+                    <strong>2. تحديث المعلمات:</strong> تحديث معلمة a بشكل خطي من 2 إلى 0 طوال العملية التكرارية.
+                </div>
+                <div class="step">
+                    <strong>3. تقييم اللياقة:</strong> تقييم كل ذئب بناءً على دالة الهدف وتحديث التسلسل الهرمي (ألفا، بيتا، دلتا) إذا لزم الأمر.
+                </div>
+                <div class="step">
+                    <strong>4. تحديث المواقع:</strong> تحديث موقع كل ذئب بناءً على مواقع ألفا، بيتا، ودلتا باستخدام معاملات A و C المحسوبة.
+                </div>
+                <div class="step">
+                    <strong>5. التكرار:</strong> تكرار الخطوات 2-4 حتى الوصول إلى الحد الأقصى للتكرارات.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Elements
+            const functionSelect = document.getElementById('function-select');
+            const startButton = document.getElementById('start-btn');
+            const resetButton = document.getElementById('reset-btn');
+            const iterationSlider = document.getElementById('iteration-slider');
+            const iterationValue = document.getElementById('iteration-value');
+            const bestScoreEl = document.getElementById('best-score');
+            const bestPositionEl = document.getElementById('best-position');
+            const iterationsEl = document.getElementById('iterations');
+            const loadingEl = document.getElementById('loading');
+            const optimizationCanvas = document.getElementById('optimization-canvas');
+            
+            // Canvas setup
+            const canvasWidth = optimizationCanvas.clientWidth;
+            const canvasHeight = optimizationCanvas.clientHeight;
+            const margin = 40;
+            
+            // Optimization data
+            let optimizationData = null;
+            let currentIteration = 0;
+            let convergenceChart = null;
+            
+            // Function to map coordinates from problem space to canvas space
+            function mapToCanvas(x, y, domain) {
+                const xScale = (canvasWidth - 2 * margin) / (domain[1] - domain[0]);
+                const yScale = (canvasHeight - 2 * margin) / (domain[1] - domain[0]);
+                
+                return {
+                    x: margin + (x - domain[0]) * xScale,
+                    y: canvasHeight - margin - (y - domain[0]) * yScale // Invert y-axis
+                };
+            }
+            
+ // تحسين رسم المخطط الحراري والذئاب - يمكن تضمين هذا الكود في ملف index.html
+
+// استبدل دالة renderContourPlot() بالتالي:
+function renderContourPlot(functionName) {
+    // تنظيف المحتوى السابق
+    optimizationCanvas.innerHTML = '';
+    
+    const domain = [-5, 5];
+    // تقليل الدقة للحصول على أداء أفضل
+    const resolution = 60; // تقليل من 100 إلى 60
+    const step = (domain[1] - domain[0]) / resolution;
+    
+    // إنشاء عنصر SVG
+    const svg = d3.select('#optimization-canvas')
+        .append('svg')
+        .attr('width', canvasWidth)
+        .attr('height', canvasHeight);
+    
+    // بدلاً من رسم نقاط فردية، نرسم خلايا مستطيلة أكبر للخريطة الحرارية
+    const cellWidth = (canvasWidth - 2 * margin) / resolution;
+    const cellHeight = (canvasHeight - 2 * margin) / resolution;
+    
+    // إنشاء بيانات الخريطة الحرارية
+    const contourData = [];
+    for (let i = 0; i <= resolution; i++) {
+        const x = domain[0] + i * step;
+        for (let j = 0; j <= resolution; j++) {
+            const y = domain[0] + j * step;
+            let value;
+            
+            if (functionName === 'sphere') {
+                value = x*x + y*y;
+            } else if (functionName === 'rastrigin') {
+                const A = 10;
+                value = 2*A + (x*x - A * Math.cos(2 * Math.PI * x)) + (y*y - A * Math.cos(2 * Math.PI * y));
+            } else if (functionName === 'himmelblau') {
+                value = Math.pow(x*x + y - 11, 2) + Math.pow(x + y*y - 7, 2);
+            }
+            
+            const point = mapToCanvas(x, y, domain);
+            contourData.push({x: point.x, y: point.y, value: value, origX: x, origY: y});
+        }
+    }
+    
+    // إيجاد القيم الصغرى والكبرى
+    const min = d3.min(contourData, d => d.value);
+    const max = d3.max(contourData, d => d.value);
+    
+    // إنشاء مقياس الألوان
+    const colorScale = d3.scaleSequential()
+        .domain([min, Math.min(max, min * 10)]) // تقليص نطاق الألوان لإظهار التفاصيل بشكل أفضل
+        .interpolator(d3.interpolateViridis);
+    
+    // رسم الخريطة الحرارية باستخدام المستطيلات بدلاً من الدوائر
+    svg.selectAll('rect')
+        .data(contourData)
+        .enter()
+        .append('rect')
+        .attr('x', d => d.x - cellWidth/2)
+        .attr('y', d => d.y - cellHeight/2)
+        .attr('width', cellWidth)
+        .attr('height', cellHeight)
+        .attr('fill', d => colorScale(d.value))
+        .attr('opacity', 0.8);
+    
+    // إضافة نقطة تمثل الحل الأمثل المعروف للدالة
+    let optimalPoint = { x: 0, y: 0 }; // الافتراضي لدالة sphere
+    if (functionName === 'himmelblau') {
+        // دالة Himmelblau لها أربع نقاط مثلى، نختار واحدة
+        optimalPoint = { x: 3, y: 2 };
+    }
+    // إضافة نقطة تمثل الحل الأمثل المعروف
+    const optimalPointCanvas = mapToCanvas(optimalPoint.x, optimalPoint.y, domain);
+    svg.append('circle')
+        .attr('cx', optimalPointCanvas.x)
+        .attr('cy', optimalPointCanvas.y)
+        .attr('r', 8)
+        .attr('fill', 'none')
+        .attr('stroke', '#ffffff')
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '3,3');
+    
+    // رسم المحاور
+    const originPoint = mapToCanvas(0, 0, domain);
+    
+    // المحور السيني
+    svg.append('line')
+        .attr('x1', margin)
+        .attr('y1', originPoint.y)
+        .attr('x2', canvasWidth - margin)
+        .attr('y2', originPoint.y)
+        .attr('stroke', '#333')
+        .attr('stroke-width', 1);
+    
+    // المحور الصادي
+    svg.append('line')
+        .attr('x1', originPoint.x)
+        .attr('y1', margin)
+        .attr('x2', originPoint.x)
+        .attr('y2', canvasHeight - margin)
+        .attr('stroke', '#333')
+        .attr('stroke-width', 1);
+    
+    // إضافة تسميات
+    svg.append('text')
+        .attr('x', canvasWidth - margin)
+        .attr('y', originPoint.y + 15)
+        .text('x')
+        .attr('font-size', '12px')
+        .attr('text-anchor', 'end');
+    
+    svg.append('text')
+        .attr('x', originPoint.x - 10)
+        .attr('y', margin)
+        .text('y')
+        .attr('font-size', '12px')
+        .attr('text-anchor', 'end');
+    
+    // إضافة شبكة خفيفة
+    const gridStep = 1;
+    for (let i = Math.ceil(domain[0]); i <= domain[1]; i += gridStep) {
+        if (i === 0) continue; // تخطي المحور
+        
+        const gridX = mapToCanvas(i, 0, domain).x;
+        const gridY = mapToCanvas(0, i, domain).y;
+        
+        // خطوط الشبكة السينية
+        svg.append('line')
+            .attr('x1', gridX)
+            .attr('y1', margin)
+            .attr('x2', gridX)
+            .attr('y2', canvasHeight - margin)
+            .attr('stroke', '#ddd')
+            .attr('stroke-width', 0.5)
+            .attr('stroke-dasharray', '3,3');
+        
+        // خطوط الشبكة الصادية
+        svg.append('line')
+            .attr('x1', margin)
+            .attr('y1', gridY)
+            .attr('x2', canvasWidth - margin)
+            .attr('y2', gridY)
+            .attr('stroke', '#ddd')
+            .attr('stroke-width', 0.5)
+            .attr('stroke-dasharray', '3,3');
+    }
+    
+    return svg;
+}
+
+// تحسين دالة updateWolfPositions
+// تعديل دالة updateWolfPositions لتحديث قيم لوحة المعلومات بشكل صحيح
+function updateWolfPositions(iteration) {
+    if (!optimizationData || !optimizationData.history[iteration]) return;
+    
+    const domain = [-5, 5];
+    const wolves = optimizationData.history[iteration].wolves;
+    const alpha = optimizationData.history[iteration].alpha;
+    const beta = optimizationData.history[iteration].beta;
+    const delta = optimizationData.history[iteration].delta;
+    
+    // تنظيف الذئاب السابقة
+    d3.selectAll('.wolf').remove();
+    d3.selectAll('.wolf-glow').remove();
+    d3.selectAll('.movement-line').remove();
+    
+    // الحصول على عنصر SVG
+    const svg = d3.select('#optimization-canvas svg');
+    
+    // رسم الذئاب العادية (أوميغا)
+    // تقليل عدد الذئاب المعروضة إذا كان عددهم كبيرًا جدًا
+    const maxDisplayWolves = 20; // عدد الذئاب المعروضة كحد أقصى
+    let displayWolves = wolves;
+    
+    if (wolves.length > maxDisplayWolves) {
+        // أخذ عينة من الذئاب لتحسين الأداء
+        const step = Math.floor(wolves.length / maxDisplayWolves);
+        displayWolves = [];
+        for (let i = 0; i < wolves.length; i += step) {
+            displayWolves.push(wolves[i]);
+        }
+    }
+    
+    // رسم الذئاب العادية (أوميغا)
+    displayWolves.forEach((wolf, index) => {
+        const point = mapToCanvas(wolf[0], wolf[1], domain);
+        svg.append('circle')
+            .attr('class', 'wolf')
+            .attr('cx', point.x)
+            .attr('cy', point.y)
+            .attr('r', 4)
+            .attr('fill', '#f1c40f')
+            .attr('opacity', 0.7);
+    });
+    
+    // رسم ذئب ألفا مع إضافة تأثير توهج
+    const alphaPoint = mapToCanvas(alpha[0], alpha[1], domain);
+    
+    // إضافة تأثير توهج لذئب ألفا
+    svg.append('circle')
+        .attr('class', 'wolf-glow')
+        .attr('cx', alphaPoint.x)
+        .attr('cy', alphaPoint.y)
+        .attr('r', 12)
+        .attr('fill', 'rgba(231, 76, 60, 0.3)');
+        
+    svg.append('circle')
+        .attr('class', 'wolf alpha-wolf')
+        .attr('cx', alphaPoint.x)
+        .attr('cy', alphaPoint.y)
+        .attr('r', 7)
+        .attr('fill', '#e74c3c');
+    
+    // رسم ذئب بيتا
+    const betaPoint = mapToCanvas(beta[0], beta[1], domain);
+    svg.append('circle')
+        .attr('class', 'wolf beta-wolf')
+        .attr('cx', betaPoint.x)
+        .attr('cy', betaPoint.y)
+        .attr('r', 6)
+        .attr('fill', '#f39c12');
+    
+    // رسم ذئب دلتا
+    const deltaPoint = mapToCanvas(delta[0], delta[1], domain);
+    svg.append('circle')
+        .attr('class', 'wolf delta-wolf')
+        .attr('cx', deltaPoint.x)
+        .attr('cy', deltaPoint.y)
+        .attr('r', 6)
+        .attr('fill', '#3498db');
+    
+    // ترسيم خطوط توضح اتجاه الحركة إذا كان هناك تكرار سابق
+    if (iteration > 0) {
+        const prevAlpha = optimizationData.history[iteration-1].alpha;
+        const prevBeta = optimizationData.history[iteration-1].beta;
+        const prevDelta = optimizationData.history[iteration-1].delta;
+        
+        const prevAlphaPoint = mapToCanvas(prevAlpha[0], prevAlpha[1], domain);
+        const prevBetaPoint = mapToCanvas(prevBeta[0], prevBeta[1], domain);
+        const prevDeltaPoint = mapToCanvas(prevDelta[0], prevDelta[1], domain);
+        
+        // خط حركة ألفا
+        svg.append('line')
+            .attr('class', 'movement-line')
+            .attr('x1', prevAlphaPoint.x)
+            .attr('y1', prevAlphaPoint.y)
+            .attr('x2', alphaPoint.x)
+            .attr('y2', alphaPoint.y)
+            .attr('stroke', '#e74c3c')
+            .attr('stroke-width', 1.5)
+            .attr('stroke-dasharray', '2,2');
+            
+        // خط حركة بيتا
+        svg.append('line')
+            .attr('class', 'movement-line')
+            .attr('x1', prevBetaPoint.x)
+            .attr('y1', prevBetaPoint.y)
+            .attr('x2', betaPoint.x)
+            .attr('y2', betaPoint.y)
+            .attr('stroke', '#f39c12')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '2,2');
+            
+        // خط حركة دلتا
+        svg.append('line')
+            .attr('class', 'movement-line')
+            .attr('x1', prevDeltaPoint.x)
+            .attr('y1', prevDeltaPoint.y)
+            .attr('x2', deltaPoint.x)
+            .attr('y2', deltaPoint.y)
+            .attr('stroke', '#3498db')
+            .attr('stroke-width', 1)
+            .attr('stroke-dasharray', '2,2');
+    }
+    
+    // الخطأ الأساسي - تحديث لوحة المعلومات
+    // تحديث قيم اللوحة بناءً على بيانات التكرار الحالي
+    
+    // نستخدم البيانات من optimizationData مباشرة بدلاً من الاعتماد على تكرار محدد
+    bestScoreEl.textContent = optimizationData.best_scores[iteration].toFixed(6);
+    bestPositionEl.textContent = `[${optimizationData.history[iteration].alpha[0].toFixed(4)}, ${optimizationData.history[iteration].alpha[1].toFixed(4)}]`;
+    iterationsEl.textContent = iteration;
+}
+
+            // تحسين رسم المخطط البياني للتقارب - يمكن تضمين هذا الكود في ملف index.html
+
+// استبدل دالة updateConvergenceChart() بالتالي:
+function updateConvergenceChart() {
+    if (!optimizationData) return;
+    
+    const ctx = document.getElementById('convergence-chart').getContext('2d');
+    
+    // تدمير المخطط السابق إذا وجد
+    if (convergenceChart) {
+        convergenceChart.destroy();
+    }
+    
+    // تقليل عدد النقاط في المخطط للتحسين
+    // اختيار نقاط تمثيلية بدلاً من رسم كل النقاط
+    const maxPoints = 50; // الحد الأقصى للنقاط في المخطط
+    const data = optimizationData.best_scores;
+    let labels = [];
+    let displayData = [];
+    
+    if (data.length <= maxPoints) {
+        // استخدام كل البيانات إذا كان عددها قليلاً
+        labels = Array.from({length: data.length}, (_, i) => i);
+        displayData = data;
+    } else {
+        // أخذ عينات من البيانات للحصول على عدد أقل من النقاط
+        const step = Math.floor(data.length / maxPoints);
+        
+        // دائماً تضمين النقطة الأولى
+        labels.push(0);
+        displayData.push(data[0]);
+        
+        // أخذ عينات متساوية من البيانات
+        for (let i = step; i < data.length - step; i += step) {
+            labels.push(i);
+            displayData.push(data[i]);
+        }
+        
+        // دائماً تضمين النقطة الأخيرة
+        labels.push(data.length - 1);
+        displayData.push(data[data.length - 1]);
+    }
+    
+    // إنشاء المخطط
+    convergenceChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'أفضل قيمة',
+                data: displayData,
+                borderColor: '#3498db',
+                backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: 3,           // تقليل حجم النقاط
+                pointHoverRadius: 5,      // حجم النقطة عند التحويم
+                borderWidth: 2            // سمك خط الرسم البياني
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,    // تعيين نسبة ثابتة للمخطط
+            aspectRatio: 2,               // تحديد نسبة العرض للارتفاع
+            animation: {
+                duration: 500            // تقليل مدة الرسوم المتحركة لتحسين الأداء
+            },
+            scales: {
+                x: {
+                    title: {
+                        display: true,
+                        text: 'التكرار'
+                    },
+                    ticks: {
+                        // عرض عدد أقل من التسميات على المحور السيني
+                        maxTicksLimit: 10
+                    }
+                },
+                y: {
+                    title: {
+                        display: true,
+                        text: 'قيمة دالة الهدف'
+                    },
+                    type: 'logarithmic',  // استخدام مقياس لوغاريتمي لعرض أفضل للقيم
+                    ticks: {
+                        callback: function(value) {
+                            // تنسيق القيم بطريقة أكثر اختصاراً
+                            if (Math.abs(value) < 0.001) {
+                                return value.toExponential(2);
+                            }
+                            return value.toFixed(3);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        title: function(context) {
+                            return 'التكرار: ' + context[0].label;
+                        },
+                        label: function(context) {
+                            return 'القيمة: ' + context.raw.toExponential(4);
+                        }
+                    }
+                },
+                legend: {
+                    display: false  // إخفاء وسيلة الإيضاح لتوفير مساحة
+                }
+            }
+        }
+    });
+}
+            // Function to run the optimization
+            async function runOptimization() {
+                const functionName = functionSelect.value;
+                
+                // Show loading indicator
+                loadingEl.classList.remove('hidden');
+                
+                try {
+                    // Get optimization data from API
+                    const response = await fetch(`/api/optimize/${functionName}`);
+                    optimizationData = await response.json();
+                    
+                    // Update slider range
+                    iterationSlider.max = optimizationData.history.length - 1;
+                    iterationSlider.value = 0;
+                    iterationValue.textContent = "0";
+                    
+                    // Render contour plot
+                    renderContourPlot(functionName);
+                    
+                    // Update wolf positions
+                    updateWolfPositions(0);
+                    
+                    // Update convergence chart
+                    updateConvergenceChart();
+                    
+                } catch (error) {
+                    console.error('Error running optimization:', error);
+                    alert('حدث خطأ أثناء تشغيل الخوارزمية. يرجى المحاولة مرة أخرى.');
+                } finally {
+                    // Hide loading indicator
+                    loadingEl.classList.add('hidden');
+                }
+            }
+            
+            // Function to reset the visualization
+            function resetVisualization() {
+                // Clear optimization data
+                optimizationData = null;
+                
+                // Clear the canvas
+                optimizationCanvas.innerHTML = '';
+                
+                // Reset information panel
+                bestScoreEl.textContent = '-';
+                bestPositionEl.textContent = '-';
+                iterationsEl.textContent = '-';
+                
+                // Reset slider
+                // Reset slider
+                iterationSlider.value = 0;
+                iterationSlider.max = 0;
+                iterationValue.textContent = "0";
+                
+                // Destroy convergence chart
+                if (convergenceChart) {
+                    convergenceChart.destroy();
+                    convergenceChart = null;
+                }
+            }
+            
+            // Event listeners
+            startButton.addEventListener('click', runOptimization);
+            resetButton.addEventListener('click', resetVisualization);
+            
+            iterationSlider.addEventListener('input', function() {
+                const iteration = parseInt(this.value);
+                iterationValue.textContent = iteration;
+                currentIteration = iteration;
+                updateWolfPositions(iteration);
+            });
+            
+            // Initialize the visualization
+            resetVisualization();
+            renderContourPlot('sphere');
+        });
+    </script>
+</body>
+</html>

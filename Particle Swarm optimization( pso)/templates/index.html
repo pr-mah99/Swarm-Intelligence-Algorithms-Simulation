@@ -1,0 +1,462 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة خوارزمية تحسين سرب الجسيمات (PSO)</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.rtl.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .card {
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 10px;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            font-weight: bold;
+            border-radius: 10px 10px 0 0;
+        }
+        .simulation-canvas {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #fff;
+            width: 100%;
+            height: 400px;
+        }
+        .controls {
+            margin-bottom: 20px;
+        }
+        .param-label {
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .slider {
+            width: 100%;
+        }
+        .iteration-display {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .best-solution {
+            background-color: #e9f7ef;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        #particleCanvas {
+            background-color: #f8f9fa;
+            display: block;
+            margin: 0 auto;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 10px;
+            font-size: 12px;
+            color: #777;
+        }
+        .particle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #007bff;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+        }
+        .global-best {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            background-color: #ff0000;
+            transform: translate(-50%, -50%);
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 class="text-center mb-4">محاكاة خوارزمية تحسين سرب الجسيمات (PSO)</h1>
+        
+        <div class="row">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        إعدادات الخوارزمية
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="numParticles" class="param-label">عدد الجسيمات:</label>
+                            <input type="range" class="form-range slider" id="numParticles" min="5" max="50" value="20">
+                            <span id="numParticlesValue">20</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="maxIterations" class="param-label">أقصى عدد للتكرارات:</label>
+                            <input type="range" class="form-range slider" id="maxIterations" min="10" max="200" value="100">
+                            <span id="maxIterationsValue">100</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="c1" class="param-label">معامل الاقتناع الشخصي (c1):</label>
+                            <input type="range" class="form-range slider" id="c1" min="0" max="4" step="0.1" value="2.0">
+                            <span id="c1Value">2.0</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="c2" class="param-label">معامل الاقتناع الاجتماعي (c2):</label>
+                            <input type="range" class="form-range slider" id="c2" min="0" max="4" step="0.1" value="2.0">
+                            <span id="c2Value">2.0</span>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="w" class="param-label">معامل الوزن الذاتي (w):</label>
+                            <input type="range" class="form-range slider" id="w" min="0" max="1" step="0.05" value="0.7">
+                            <span id="wValue">0.7</span>
+                        </div>
+                        
+                        <button id="startButton" class="btn btn-primary w-100">بدء المحاكاة</button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        أفضل حل
+                    </div>
+                    <div class="card-body">
+                        <div class="best-solution">
+                            <p><strong>التكرار الحالي:</strong> <span id="currentIteration">0</span>/<span id="totalIterations">0</span></p>
+                            <p><strong>أفضل قيمة:</strong> <span id="bestValue">-</span></p>
+                            <p><strong>أفضل موقع:</strong> <span id="bestPosition">-</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        محاكاة حركة الجسيمات
+                    </div>
+                    <div class="card-body">
+                        <div class="simulation-container">
+                            <canvas id="particleCanvas" width="600" height="400"></canvas>
+                        </div>
+                        
+                        <div class="controls text-center mt-3">
+                            <button id="playButton" class="btn btn-success me-2" disabled>تشغيل</button>
+                            <button id="pauseButton" class="btn btn-warning me-2" disabled>إيقاف مؤقت</button>
+                            <button id="resetButton" class="btn btn-danger me-2" disabled>إعادة تعيين</button>
+                            <div class="mt-3">
+                                <label for="speedControl" class="param-label">سرعة المحاكاة:</label>
+                                <input type="range" class="form-range slider" id="speedControl" min="1" max="10" value="5">
+                                <span id="speedValue">5</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        منحنى التقارب
+                    </div>
+                    <div class="card-body">
+                        <canvas id="convergenceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="footer">
+            محاكاة خوارزمية تحسين سرب الجسيمات (PSO) - تم إنشاؤها باستخدام Python و Flask
+        </div>
+    </div>
+    
+    <script>
+        // إعدادات المحاكاة
+        let simulationHistory = [];
+        let currentIterationIndex = 0;
+        let isPlaying = false;
+        let animationSpeed = 5;
+        let animationTimer;
+        
+        // عناصر DOM
+        const startButton = document.getElementById('startButton');
+        const playButton = document.getElementById('playButton');
+        const pauseButton = document.getElementById('pauseButton');
+        const resetButton = document.getElementById('resetButton');
+        const speedControl = document.getElementById('speedControl');
+        const speedValue = document.getElementById('speedValue');
+        const currentIteration = document.getElementById('currentIteration');
+        const totalIterations = document.getElementById('totalIterations');
+        const bestValue = document.getElementById('bestValue');
+        const bestPosition = document.getElementById('bestPosition');
+        
+        // لوحة الرسم للجسيمات
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // مخطط التقارب
+        const convergenceChart = new Chart(document.getElementById('convergenceChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'أفضل قيمة عالمية',
+                    data: [],
+                    borderColor: 'rgb(75, 192, 192)',
+                    tension: 0.1,
+                    fill: false
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'التكرار'
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: 'قيمة دالة الهدف'
+                        },
+                        type: 'logarithmic'
+                    }
+                }
+            }
+        });
+        
+        // تحديث قيم عناصر التحكم
+        document.getElementById('numParticles').addEventListener('input', function() {
+            document.getElementById('numParticlesValue').textContent = this.value;
+        });
+        
+        document.getElementById('maxIterations').addEventListener('input', function() {
+            document.getElementById('maxIterationsValue').textContent = this.value;
+        });
+        
+        document.getElementById('c1').addEventListener('input', function() {
+            document.getElementById('c1Value').textContent = this.value;
+        });
+        
+        document.getElementById('c2').addEventListener('input', function() {
+            document.getElementById('c2Value').textContent = this.value;
+        });
+        
+        document.getElementById('w').addEventListener('input', function() {
+            document.getElementById('wValue').textContent = this.value;
+        });
+        
+        speedControl.addEventListener('input', function() {
+            animationSpeed = parseInt(this.value);
+            speedValue.textContent = animationSpeed;
+        });
+        
+        // رسم الجسيمات على اللوحة
+        function drawParticles(iterationData) {
+            // مسح اللوحة
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // حدود فضاء البحث
+            const bounds = [-5, 5];
+            
+            // تحويل الإحداثيات من فضاء البحث إلى إحداثيات الشاشة
+            function transformX(x) {
+                return ((x - bounds[0]) / (bounds[1] - bounds[0])) * canvas.width;
+            }
+            
+            function transformY(y) {
+                return canvas.height - ((y - bounds[0]) / (bounds[1] - bounds[0])) * canvas.height;
+            }
+            
+            // رسم الجسيمات
+            iterationData.particles.forEach(particle => {
+                const x = transformX(particle.position[0]);
+                const y = transformY(particle.position[1]);
+                
+                // رسم الجسيم
+                ctx.beginPath();
+                ctx.arc(x, y, 5, 0, Math.PI * 2);
+                ctx.fillStyle = '#3498db';
+                ctx.fill();
+                
+                // رسم خط الاتجاه (السرعة)
+                const velocityScale = 5;
+                const vx = particle.velocity[0] * velocityScale;
+                const vy = -particle.velocity[1] * velocityScale;
+                
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(x + vx, y + vy);
+                ctx.strokeStyle = '#2980b9';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // رسم أفضل موقع شخصي
+                const pbx = transformX(particle.personal_best_position[0]);
+                const pby = transformY(particle.personal_best_position[1]);
+                
+                ctx.beginPath();
+                ctx.arc(pbx, pby, 2, 0, Math.PI * 2);
+                ctx.fillStyle = '#27ae60';
+                ctx.fill();
+            });
+            
+            // رسم أفضل موقع عالمي
+            const gbx = transformX(iterationData.global_best_position[0]);
+            const gby = transformY(iterationData.global_best_position[1]);
+            
+            ctx.beginPath();
+            ctx.arc(gbx, gby, 8, 0, Math.PI * 2);
+            ctx.fillStyle = '#e74c3c';
+            ctx.fill();
+            ctx.strokeStyle = '#c0392b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // رسم شعاع متوهج حول أفضل موقع عالمي
+            ctx.beginPath();
+            ctx.arc(gbx, gby, 12, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(231, 76, 60, 0.5)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
+        
+        // تحديث مخطط التقارب
+        function updateConvergenceChart(history) {
+            convergenceChart.data.labels = history.map(item => item.iteration);
+            convergenceChart.data.datasets[0].data = history.map(item => item.global_best_value);
+            convergenceChart.update();
+        }
+        
+        // تحديث عرض التكرار الحالي
+        function updateIteration(iterationData) {
+            currentIteration.textContent = iterationData.iteration;
+            bestValue.textContent = iterationData.global_best_value.toFixed(6);
+            bestPosition.textContent = '[' + iterationData.global_best_position.map(p => p.toFixed(4)).join(', ') + ']';
+        }
+        
+        // تشغيل المحاكاة
+        function playSimulation() {
+            if (isPlaying) return;
+            
+            isPlaying = true;
+            playButton.disabled = true;
+            pauseButton.disabled = false;
+            
+            function step() {
+                if (!isPlaying) return;
+                
+                if (currentIterationIndex < simulationHistory.length) {
+                    const iterationData = simulationHistory[currentIterationIndex];
+                    drawParticles(iterationData);
+                    updateIteration(iterationData);
+                    currentIterationIndex++;
+                    
+                    // تحديث مخطط التقارب
+                    updateConvergenceChart(simulationHistory.slice(0, currentIterationIndex));
+                    
+                    // جدولة الخطوة التالية
+                    clearTimeout(animationTimer);
+                    animationTimer = setTimeout(step, 1000 / animationSpeed);
+                } else {
+                    isPlaying = false;
+                    playButton.disabled = false;
+                    pauseButton.disabled = true;
+                }
+            }
+            
+            step();
+        }
+        
+        // إيقاف المحاكاة مؤقتًا
+        function pauseSimulation() {
+            isPlaying = false;
+            playButton.disabled = false;
+            pauseButton.disabled = true;
+            clearTimeout(animationTimer);
+        }
+        
+        // إعادة تعيين المحاكاة
+        function resetSimulation() {
+            pauseSimulation();
+            currentIterationIndex = 0;
+            if (simulationHistory.length > 0) {
+                const initialData = simulationHistory[0];
+                drawParticles(initialData);
+                updateIteration(initialData);
+                updateConvergenceChart([initialData]);
+            }
+            playButton.disabled = false;
+        }
+        
+        // بدء المحاكاة
+        startButton.addEventListener('click', function() {
+            const params = {
+                num_particles: parseInt(document.getElementById('numParticles').value),
+                max_iterations: parseInt(document.getElementById('maxIterations').value),
+                c1: parseFloat(document.getElementById('c1').value),
+                c2: parseFloat(document.getElementById('c2').value),
+                w: parseFloat(document.getElementById('w').value),
+                dimensions: 2  // نستخدم بعدين فقط للتمثيل المرئي
+            };
+            
+            // إظهار رسالة تحميل
+            startButton.disabled = true;
+            startButton.textContent = 'جاري التحميل...';
+            
+            // إرسال الطلب إلى الخادم
+            fetch('/run_simulation', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                simulationHistory = data;
+                totalIterations.textContent = params.max_iterations;
+                
+                // إعادة تمكين الأزرار
+                startButton.disabled = false;
+                startButton.textContent = 'بدء المحاكاة';
+                playButton.disabled = false;
+                resetButton.disabled = false;
+                
+                // عرض الحالة الأولية
+                resetSimulation();
+            })
+            .catch(error => {
+                console.error('خطأ:', error);
+                startButton.disabled = false;
+                startButton.textContent = 'بدء المحاكاة';
+                alert('حدث خطأ أثناء محاولة بدء المحاكاة. يرجى المحاولة مرة أخرى.');
+            });
+        });
+        
+        // أزرار التحكم في المحاكاة
+        playButton.addEventListener('click', playSimulation);
+        pauseButton.addEventListener('click', pauseSimulation);
+        resetButton.addEventListener('click', resetSimulation);
+    </script>
+</body>
+</html>

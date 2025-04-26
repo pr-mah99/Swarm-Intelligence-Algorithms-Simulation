@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>خوارزمية مستعمرة النمل (ACO)</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            text-align: right;
+        }
+        h1, h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            cursor: pointer;
+            border-radius: 4px;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .iteration {
+            margin-bottom: 30px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 20px;
+        }
+        .iteration-header {
+            margin-bottom: 10px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .graph-container {
+            text-align: center;
+            margin: 15px 0;
+        }
+        .graph-image {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .slider-container {
+            width: 100%;
+            margin: 20px 0;
+        }
+        .slider {
+            width: 100%;
+        }
+        .animation-controls {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .control-btn {
+            margin: 0 10px;
+            padding: 8px 15px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .info-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e2e3e5;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .ant-visualization {
+            text-align: center;
+        }
+        .explanation {
+            background-color: #e7f5fe;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>محاكاة خوارزمية مستعمرة النمل (Ant Colony Optimization)</h1>
+        
+        <div class="explanation">
+            <h3>كيف تعمل خوارزمية مستعمرة النمل؟</h3>
+            <p>خوارزمية مستعمرة النمل (ACO) هي خوارزمية تحسين مستوحاة من سلوك النمل في العثور على أقصر مسار بين عشها ومصادر الغذاء. تترك النمل مادة كيميائية تسمى الفيرومون على المسارات التي تسلكها. تميل النمل إلى اتباع المسارات ذات تركيز الفيرومون الأعلى، مما يؤدي بمرور الوقت إلى تشكيل أقصر مسار ممكن.</p>
+            <p>فيما يلي الخطوات الأساسية للخوارزمية:</p>
+            <ol>
+                <li><strong>التهيئة:</strong> يتم تهيئة جميع المسارات بكمية صغيرة من الفيرومون.</li>
+                <li><strong>بناء الحلول:</strong> تبني كل نملة مسارًا كاملًا خطوة بخطوة، باختيار الخطوة التالية بناءً على مزيج من المسافة والفيرومون الموجود.</li>
+                <li><strong>تحديث الفيرومون:</strong> بعد بناء جميع النمل لمساراتها، يتم تحديث كمية الفيرومون على المسارات، مع زيادة الفيرومون على المسارات القصيرة وتقليله على المسارات الأطول.</li>
+               <li><strong>تبخر الفيرومون:</strong> يتبخر جزء من الفيرومون مع مرور الوقت، مما يسمح للخوارزمية باستكشاف مسارات جديدة وتجنب التوقف عند الحل المحلي الأمثل.</li>
+                <li><strong>التكرار:</strong> تتكرر الخطوات السابقة لعدد محدد من التكرارات أو حتى التقارب.</li>
+            </ol>
+        </div>
+        
+        <div class="form-container">
+            <h2>إعدادات الخوارزمية</h2>
+            <div class="form-group">
+                <label for="n_cities">عدد المدن:</label>
+                <input type="number" id="n_cities" min="5" max="30" value="10">
+            </div>
+            <div class="form-group">
+                <label for="n_ants">عدد النمل:</label>
+                <input type="number" id="n_ants" min="5" max="50" value="10">
+            </div>
+            <div class="form-group">
+                <label for="n_iterations">عدد التكرارات:</label>
+                <input type="number" id="n_iterations" min="5" max="100" value="20">
+            </div>
+            <div class="form-group">
+                <label for="decay">معدل تبخر الفيرومون (0-1):</label>
+                <input type="number" id="decay" min="0.1" max="0.9" step="0.1" value="0.5">
+            </div>
+            <div class="form-group">
+                <label for="alpha">قوة تأثير الفيرومون (α):</label>
+                <input type="number" id="alpha" min="0.1" max="5" step="0.1" value="1">
+            </div>
+            <div class="form-group">
+                <label for="beta">قوة تأثير المسافة (β):</label>
+                <input type="number" id="beta" min="0.1" max="5" step="0.1" value="2">
+            </div>
+            <button id="run-btn" class="btn">تشغيل المحاكاة</button>
+        </div>
+        
+        <div id="loading" class="loading">
+            <div class="loading-spinner"></div>
+            <p>جاري تشغيل المحاكاة...</p>
+        </div>
+        
+        <div id="animation-container" style="display: none;">
+            <h2>عرض متحرك للخوارزمية</h2>
+            <div class="animation-controls">
+                <button id="prev-btn" class="control-btn">السابق</button>
+                <button id="play-btn" class="control-btn">تشغيل</button>
+                <button id="next-btn" class="control-btn">التالي</button>
+            </div>
+            <div class="slider-container">
+                <input type="range" min="0" max="0" value="0" class="slider" id="iteration-slider">
+                <p id="iteration-label">التكرار: 1</p>
+            </div>
+            <div id="current-iteration" class="graph-container">
+                <img id="current-graph" class="graph-image" src="">
+            </div>
+            <div id="current-info" class="info-box">
+                <h3>معلومات التكرار الحالي</h3>
+                <p id="current-path"></p>
+                <p id="current-length"></p>
+            </div>
+        </div>
+        
+        <div id="results" class="results" style="display: none;">
+            <h2>النتائج النهائية</h2>
+            <div class="info-box">
+                <h3>أفضل مسار</h3>
+                <p id="final-path"></p>
+                <p id="final-length"></p>
+            </div>
+        </div>
+        <div style="display: flex; width: 100%;">
+            <img src="../static/1.gif" alt="Image 1" style="width: 33.33%; height: auto;">
+            <img src="../static/2.gif" alt="Image 2" style="width: 33.33%; height: auto;">
+            <img src="../static/3.gif" alt="Image 3" style="width: 33.33%; height: auto;">
+          </div>
+          
+    </div>
+    
+    <script>
+        // متغيرات عالمية للتحكم في العرض المتحرك
+        let resultsData = [];
+        let currentIteration = 0;
+        let animationInterval = null;
+        
+        // إعداد الأحداث
+        document.getElementById('run-btn').addEventListener('click', runACO);
+        document.getElementById('prev-btn').addEventListener('click', showPreviousIteration);
+        document.getElementById('next-btn').addEventListener('click', showNextIteration);
+        document.getElementById('play-btn').addEventListener('click', togglePlayPause);
+        document.getElementById('iteration-slider').addEventListener('input', function() {
+            currentIteration = parseInt(this.value);
+            showIteration(currentIteration);
+        });
+        
+        // تشغيل الخوارزمية
+        function runACO() {
+            // إظهار مؤشر التحميل
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('animation-container').style.display = 'none';
+            document.getElementById('results').style.display = 'none';
+            
+            // جمع المعلمات من النموذج
+            const params = {
+                n_cities: document.getElementById('n_cities').value,
+                n_ants: document.getElementById('n_ants').value,
+                n_iterations: document.getElementById('n_iterations').value,
+                decay: document.getElementById('decay').value,
+                alpha: document.getElementById('alpha').value,
+                beta: document.getElementById('beta').value
+            };
+            
+            // إرسال الطلب للخادم
+            fetch('/run_aco', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // إخفاء مؤشر التحميل
+                document.getElementById('loading').style.display = 'none';
+                
+                // حفظ البيانات
+                resultsData = data.results;
+                
+                // تحديث شريط التمرير
+                const slider = document.getElementById('iteration-slider');
+                slider.max = resultsData.length - 1;
+                slider.value = 0;
+                currentIteration = 0;
+                
+                // عرض الرسم البياني للتكرار الأول
+                showIteration(currentIteration);
+                
+                // إظهار حاويات النتائج
+                document.getElementById('animation-container').style.display = 'block';
+                document.getElementById('results').style.display = 'block';
+                
+                // عرض النتائج النهائية
+                document.getElementById('final-path').textContent = `المسار: ${data.final_best_path.join(' -> ')} -> ${data.final_best_path[0]}`;
+                document.getElementById('final-length').textContent = `الطول: ${data.final_best_path_length.toFixed(2)}`;
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                document.getElementById('loading').style.display = 'none';
+                alert('حدث خطأ أثناء تشغيل المحاكاة!');
+            });
+        }
+        
+        // عرض تكرار محدد
+        function showIteration(index) {
+            if (resultsData.length === 0 || index < 0 || index >= resultsData.length) {
+                return;
+            }
+            
+            const iteration = resultsData[index];
+            
+            // تحديث عنوان التكرار
+            document.getElementById('iteration-label').textContent = `التكرار: ${iteration.iteration}`;
+            
+            // تحديث الرسم البياني
+            document.getElementById('current-graph').src = iteration.graph_image;
+            
+            // تحديث معلومات المسار
+            if (iteration.best_path) {
+                document.getElementById('current-path').textContent = `المسار: ${iteration.best_path.join(' -> ')} -> ${iteration.best_path[0]}`;
+                document.getElementById('current-length').textContent = `الطول: ${iteration.best_path_length.toFixed(2)}`;
+            } else {
+                document.getElementById('current-path').textContent = 'لم يتم العثور على مسار بعد.';
+                document.getElementById('current-length').textContent = '';
+            }
+            
+            // تحديث شريط التمرير
+            document.getElementById('iteration-slider').value = index;
+        }
+        
+        // عرض التكرار السابق
+        function showPreviousIteration() {
+            if (currentIteration > 0) {
+                currentIteration--;
+                showIteration(currentIteration);
+            }
+        }
+        
+        // عرض التكرار التالي
+        function showNextIteration() {
+            if (currentIteration < resultsData.length - 1) {
+                currentIteration++;
+                showIteration(currentIteration);
+            }
+        }
+        
+        // تشغيل/إيقاف العرض المتحرك
+        function togglePlayPause() {
+            const playBtn = document.getElementById('play-btn');
+            
+            if (animationInterval) {
+                // إيقاف العرض المتحرك
+                clearInterval(animationInterval);
+                animationInterval = null;
+                playBtn.textContent = 'تشغيل';
+            } else {
+                // تشغيل العرض المتحرك
+                playBtn.textContent = 'إيقاف';
+                animationInterval = setInterval(() => {
+                    if (currentIteration < resultsData.length - 1) {
+                        currentIteration++;
+                        showIteration(currentIteration);
+                    } else {
+                        // عند الوصول للنهاية، إيقاف العرض المتحرك
+                        clearInterval(animationInterval);
+                        animationInterval = null;
+                        playBtn.textContent = 'تشغيل';
+                    }
+                }, 1000); // عرض كل تكرار لمدة ثانية واحدة
+            }
+        }
+    </script>
+</body>
+</html>

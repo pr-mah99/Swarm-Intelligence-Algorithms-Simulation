@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>محاكاة خوارزمية تحسين سرب اليراعات</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        select, button {
+            padding: 8px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+            font-size: 16px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .visualization {
+            display: flex;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        #canvas-container {
+            flex: 2;
+            min-width: 300px;
+            height: 500px;
+            position: relative;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            background-color: #f9f9f9;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+        }
+        .info-panel {
+            flex: 1;
+            min-width: 250px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 20px;
+            background-color: #f9f9f9;
+        }
+        .progress-container {
+            margin-top: 20px;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #f1f1f1;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .progress {
+            height: 100%;
+            background-color: #4CAF50;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .legend {
+            display: flex;
+            justify-content: center;
+            margin-top: 10px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 0 10px;
+        }
+        .legend-color {
+            width: 15px;
+            height: 15px;
+            border-radius: 50%;
+            margin-left: 5px;
+        }
+        .info-list {
+            list-style-type: none;
+            padding: 0;
+        }
+        .info-list li {
+            margin-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        .iteration-control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .iteration-control button {
+            margin: 0 10px;
+            width: 40px;
+        }
+        #iteration-slider {
+            flex-grow: 1;
+        }
+        .contour-plot {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.3;
+        }
+        @media (max-width: 768px) {
+            .visualization {
+                flex-direction: column;
+            }
+            .info-panel {
+                margin-right: 0;
+                margin-bottom: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>محاكاة خوارزمية تحسين سرب اليراعات</h1>
+        <p>خوارزمية تحسين سرب اليراعات (Firefly Algorithm) هي خوارزمية تحسين مستوحاة من سلوك وميض اليراعات في الطبيعة. تتحرك اليراعات نحو اليراعات الأكثر سطوعًا، حيث يتم تحديد السطوع بناءً على قيمة دالة الهدف.</p>
+        
+        <div class="controls">
+            <div>
+                <label for="function-select">اختر دالة الهدف:</label>
+                <select id="function-select">
+                    <option value="sphere">دالة Sphere</option>
+                    <option value="rosenbrock">دالة Rosenbrock</option>
+                    <option value="rastrigin">دالة Rastrigin</option>
+                    <option value="ackley">دالة Ackley</option>
+                </select>
+            </div>
+            <button id="start-btn">بدء المحاكاة</button>
+        </div>
+        
+        <div class="progress-container">
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
+            </div>
+            <div class="iteration-control">
+                <button id="prev-btn">◀</button>
+                <input type="range" id="iteration-slider" min="0" max="30" value="0">
+                <button id="next-btn">▶</button>
+                <span id="iteration-display">0 / 30</span>
+            </div>
+        </div>
+        
+        <div class="visualization">
+            <div class="info-panel">
+                <h2>معلومات التحسين</h2>
+                <ul class="info-list">
+                    <li><strong>التكرار الحالي:</strong> <span id="current-iteration">0</span></li>
+                    <li><strong>أفضل حل حالي:</strong> <span id="current-best">-</span></li>
+                    <li><strong>أفضل قيمة حالية:</strong> <span id="current-fitness">-</span></li>
+                    <li><strong>أفضل حل عام:</strong> <span id="global-best">-</span></li>
+                    <li><strong>أفضل قيمة عامة:</strong> <span id="global-fitness">-</span></li>
+                </ul>
+                
+                <h3>معلمات الخوارزمية</h3>
+                <ul class="info-list">
+                    <li><strong>عدد اليراعات:</strong> 20</li>
+                    <li><strong>معامل العشوائية (α):</strong> 0.5</li>
+                    <li><strong>الجاذبية الأساسية (β₀):</strong> 1.0</li>
+                    <li><strong>معامل امتصاص الضوء (γ):</strong> 0.1</li>
+                </ul>
+            </div>
+            
+            <div id="canvas-container">
+                <canvas id="contour-canvas" class="contour-plot"></canvas>
+                <canvas id="simulation-canvas"></canvas>
+            </div>
+        </div>
+        
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(255, 200, 0, 0.8);"></div>
+                <span>اليراعات</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(255, 0, 0, 0.8);"></div>
+                <span>أفضل حل حالي</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-color" style="background-color: rgba(0, 128, 0, 0.8);"></div>
+                <span>أفضل حل عام</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const canvas = document.getElementById('simulation-canvas');
+            const contourCanvas = document.getElementById('contour-canvas');
+            const ctx = canvas.getContext('2d');
+            const contourCtx = contourCanvas.getContext('2d');
+            
+            // تعيين الحجم الصحيح للكانفاس
+            function resizeCanvas() {
+                const container = document.getElementById('canvas-container');
+                canvas.width = container.clientWidth;
+                canvas.height = container.clientHeight;
+                contourCanvas.width = container.clientWidth;
+                contourCanvas.height = container.clientHeight;
+            }
+            
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            let optimizationData = null;
+            let currentIteration = 0;
+            let animationInterval = null;
+            
+            // زر بدء المحاكاة
+            document.getElementById('start-btn').addEventListener('click', startOptimization);
+            
+            // أزرار التحكم في التكرار
+            document.getElementById('prev-btn').addEventListener('click', () => {
+                if (currentIteration > 0) {
+                    currentIteration--;
+                    updateSlider();
+                    renderIteration(currentIteration);
+                }
+            });
+            
+            document.getElementById('next-btn').addEventListener('click', () => {
+                if (optimizationData && currentIteration < optimizationData.history.length - 1) {
+                    currentIteration++;
+                    updateSlider();
+                    renderIteration(currentIteration);
+                }
+            });
+            
+            // مستمع شريط التمرير
+            const slider = document.getElementById('iteration-slider');
+            slider.addEventListener('input', function() {
+                if (optimizationData) {
+                    currentIteration = parseInt(this.value);
+                    renderIteration(currentIteration);
+                }
+            });
+            
+            function updateSlider() {
+                slider.value = currentIteration;
+                document.getElementById('iteration-display').textContent = `${currentIteration} / ${optimizationData.history.length - 1}`;
+            }
+            
+            function startOptimization() {
+                // إيقاف أي تحريك سابق
+                if (animationInterval) {
+                    clearInterval(animationInterval);
+                }
+                
+                // إعادة تعيين التكرار الحالي
+                currentIteration = 0;
+                
+                // تحديث واجهة المستخدم
+                const startBtn = document.getElementById('start-btn');
+                startBtn.textContent = 'جارٍ التنفيذ...';
+                startBtn.disabled = true;
+                
+                // الحصول على دالة الهدف المحددة
+                const functionName = document.getElementById('function-select').value;
+                
+                // طلب بدء التحسين
+                fetch(`/optimize/${functionName}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        optimizationData = data;
+                        
+                        // رسم منحنى المستوى لدالة الهدف
+                        drawContourPlot(functionName);
+                        
+                        // تحديث واجهة المستخدم
+                        startBtn.textContent = 'بدء المحاكاة';
+                        startBtn.disabled = false;
+                        slider.max = optimizationData.history.length - 1;
+                        updateSlider();
+                        
+                        // بدء التحريك
+                        renderIteration(0);
+                        animateOptimization();
+                    })
+                    .catch(error => {
+                        console.error('Error during optimization:', error);
+                        startBtn.textContent = 'بدء المحاكاة';
+                        startBtn.disabled = false;
+                    });
+            }
+            
+            function drawContourPlot(functionName) {
+                // رسم منحنى المستوى لدالة الهدف
+                const width = contourCanvas.width;
+                const height = contourCanvas.height;
+                const imageData = contourCtx.createImageData(width, height);
+                
+                // تحويل من إحداثيات الشاشة إلى إحداثيات الفضاء الحقيقي
+                const minX = -5, maxX = 5;
+                const minY = -5, maxY = 5;
+                
+                // دوال الهدف
+                const functions = {
+                    sphere: (x, y) => x*x + y*y,
+                    rosenbrock: (x, y) => 100 * Math.pow(y - x*x, 2) + Math.pow(1 - x, 2),
+                    rastrigin: (x, y) => 20 + x*x + y*y - 10*(Math.cos(2*Math.PI*x) + Math.cos(2*Math.PI*y)),
+                    ackley: (x, y) => {
+                        const a = 20, b = 0.2, c = 2*Math.PI;
+                        const term1 = -a * Math.exp(-b * Math.sqrt(0.5 * (x*x + y*y)));
+                        const term2 = -Math.exp(0.5 * (Math.cos(c*x) + Math.cos(c*y)));
+                        return term1 + term2 + a + Math.exp(1);
+                    }
+                };
+                
+                const selectedFunction = functions[functionName];
+                
+                // حساب الحد الأقصى لقيمة الدالة للتطبيع
+                let maxValue = 0;
+                for (let i = 0; i < width; i += 10) {
+                    for (let j = 0; j < height; j += 10) {
+                        const x = minX + (maxX - minX) * i / width;
+                        const y = minY + (maxY - minY) * j / height;
+                        const value = selectedFunction(x, y);
+                        if (value > maxValue && value < 1000) maxValue = value;
+                    }
+                }
+                
+                // رسم منحنى المستوى
+                for (let i = 0; i < width; i++) {
+                    for (let j = 0; j < height; j++) {
+                        const x = minX + (maxX - minX) * i / width;
+                        const y = minY + (maxY - minY) * j / height;
+                        
+                        let value = selectedFunction(x, y);
+                        
+                        // تطبيع القيمة
+                        value = Math.min(value, maxValue);
+                        const normalizedValue = value / maxValue;
+                        
+                        // تحويل إلى لون (من الأزرق إلى الأحمر)
+                        const r = Math.floor(255 * normalizedValue);
+                        const g = 0;
+                        const b = Math.floor(255 * (1 - normalizedValue));
+                        
+                        const index = (j * width + i) * 4;
+                        imageData.data[index] = r;
+                        imageData.data[index + 1] = g;
+                        imageData.data[index + 2] = b;
+                        imageData.data[index + 3] = 128; // نصف شفافية
+                    }
+                }
+                
+                contourCtx.putImageData(imageData, 0, 0);
+            }
+            
+            function animateOptimization() {
+                // تحريك التكرارات تلقائيًا
+                animationInterval = setInterval(() => {
+                    if (currentIteration < optimizationData.history.length - 1) {
+                        currentIteration++;
+                        updateSlider();
+                        renderIteration(currentIteration);
+                    } else {
+                        clearInterval(animationInterval);
+                    }
+                }, 500);
+            }
+            
+            function renderIteration(iteration) {
+                if (!optimizationData) return;
+                
+                // تحديث شريط التقدم
+                const progress = document.getElementById('progress');
+                const progressPercentage = (iteration / (optimizationData.history.length - 1)) * 100;
+                progress.style.width = `${progressPercentage}%`;
+                
+                // تحديث معلومات التكرار
+                const iterationData = optimizationData.history[iteration];
+                
+                document.getElementById('current-iteration').textContent = iterationData.iteration;
+                document.getElementById('current-best').textContent = `[${iterationData.current_best.position.map(p => p.toFixed(4)).join(', ')}]`;
+                document.getElementById('current-fitness').textContent = iterationData.current_best.fitness.toFixed(6);
+                document.getElementById('global-best').textContent = `[${iterationData.global_best.position.map(p => p.toFixed(4)).join(', ')}]`;
+                document.getElementById('global-fitness').textContent = iterationData.global_best.fitness.toFixed(6);
+                
+                // رسم اليراعات
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                
+                const minX = -5, maxX = 5;
+                const minY = -5, maxY = 5;
+                
+                // تحويل إحداثيات الفضاء الحقيقي إلى إحداثيات الشاشة
+                function transformX(x) {
+                    return canvas.width * (x - minX) / (maxX - minX);
+                }
+                
+                function transformY(y) {
+                    return canvas.height * (1 - (y - minY) / (maxY - minY));
+                }
+                
+                // رسم محاور الإحداثيات
+                ctx.beginPath();
+                ctx.strokeStyle = '#aaaaaa';
+                ctx.lineWidth = 1;
+                
+                // المحور السيني
+                ctx.moveTo(0, transformY(0));
+                ctx.lineTo(canvas.width, transformY(0));
+                
+                // المحور الصادي
+                ctx.moveTo(transformX(0), 0);
+                ctx.lineTo(transformX(0), canvas.height);
+                
+                // شبكة
+                for (let x = minX; x <= maxX; x += 1) {
+                    ctx.moveTo(transformX(x), 0);
+                    ctx.lineTo(transformX(x), canvas.height);
+                }
+                
+                for (let y = minY; y <= maxY; y += 1) {
+                    ctx.moveTo(0, transformY(y));
+                    ctx.lineTo(canvas.width, transformY(y));
+                }
+                
+                ctx.stroke();
+                
+                // كتابة قيم المحاور
+                ctx.fillStyle = '#333333';
+                ctx.font = '12px Arial';
+                
+                for (let x = minX; x <= maxX; x += 1) {
+                    ctx.fillText(x.toString(), transformX(x) - 5, transformY(0) + 15);
+                }
+                
+                for (let y = minY; y <= maxY; y += 1) {
+                    if (y !== 0) {
+                        ctx.fillText(y.toString(), transformX(0) + 5, transformY(y) + 5);
+                    }
+                }
+                
+                // رسم اليراعات
+                for (let i = 0; i < iterationData.firefly_positions.length; i++) {
+                    const [x, y] = iterationData.firefly_positions[i];
+                    const intensity = iterationData.light_intensities[i];
+                    
+                    const screenX = transformX(x);
+                    const screenY = transformY(y);
+                    
+                    // حجم اليراع يعتمد على شدة الضوء
+                    const maxRadius = 10;
+                    const minRadius = 3;
+                    const normalizedIntensity = (intensity - Math.min(...iterationData.light_intensities)) / 
+                                           (Math.max(...iterationData.light_intensities) - Math.min(...iterationData.light_intensities));
+                    const radius = minRadius + normalizedIntensity * (maxRadius - minRadius);
+                    
+                    // رسم اليراع
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, radius, 0, 2 * Math.PI);
+                    ctx.fillStyle = `rgba(255, 200, 0, 0.8)`;
+                    ctx.fill();
+                    
+                    // رسم مسار الضوء (هالة)
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, radius * 2, 0, 2 * Math.PI);
+                    ctx.fillStyle = `rgba(255, 200, 0, ${0.1 + 0.2 * normalizedIntensity})`;
+                    ctx.fill();
+                }
+                
+                // رسم أفضل حل في التكرار الحالي
+                const [currentBestX, currentBestY] = iterationData.current_best.position;
+                ctx.beginPath();
+                ctx.arc(transformX(currentBestX), transformY(currentBestY), 8, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(255, 0, 0, 0.8)';
+                ctx.fill();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                // رسم أفضل حل عام
+                const [globalBestX, globalBestY] = iterationData.global_best.position;
+                ctx.beginPath();
+                ctx.arc(transformX(globalBestX), transformY(globalBestY), 10, 0, 2 * Math.PI);
+                ctx.fillStyle = 'rgba(0, 128, 0, 0.8)';
+                ctx.fill();
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        });
+    </script>
+</body>
+</html>
